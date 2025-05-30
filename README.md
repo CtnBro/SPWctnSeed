@@ -1,5 +1,6 @@
 loadstring([[
 local Players = game:GetService("Players")
+local CollectionService = game:GetService("CollectionService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
@@ -23,11 +24,10 @@ Frame.Draggable = true
 Frame.BorderSizePixel = 0
 Frame.Parent = ScreenGui
 
-local UICorner = Instance.new("UICorner")
+local UICorner = Instance.new("UICorner", Frame)
 UICorner.CornerRadius = UDim.new(0, 16)
-UICorner.Parent = Frame
 
-local TitleBox = Instance.new("TextLabel")
+local TitleBox = Instance.new("TextLabel", Frame)
 TitleBox.Size = UDim2.new(0.86, 0, 0.25, 0)
 TitleBox.Position = UDim2.new(0.07, 0, 0.05, 0)
 TitleBox.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
@@ -39,26 +39,16 @@ TitleBox.TextScaled = true
 TitleBox.TextStrokeTransparency = 0.7
 TitleBox.TextTransparency = 0.05
 TitleBox.BorderSizePixel = 0
-TitleBox.Parent = Frame
 
-local titleCorner = Instance.new("UICorner")
+local titleCorner = Instance.new("UICorner", TitleBox)
 titleCorner.CornerRadius = UDim.new(0, 12)
-titleCorner.Parent = TitleBox
 
-local goldTexture = Instance.new("ImageLabel")
-goldTexture.Image = "rbxassetid://11478733258"
-goldTexture.Size = UDim2.new(1, 0, 1, 0)
-goldTexture.BackgroundTransparency = 1
-goldTexture.ZIndex = 0
-goldTexture.Parent = TitleBox
-
-local ShineLine = Instance.new("Frame")
+local ShineLine = Instance.new("Frame", TitleBox)
 ShineLine.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 ShineLine.Size = UDim2.new(0.08, 0, 1, 0)
 ShineLine.Position = UDim2.new(-0.1, 0, 0, 0)
 ShineLine.BackgroundTransparency = 0.6
 ShineLine.BorderSizePixel = 0
-ShineLine.Parent = TitleBox
 
 task.spawn(function()
 	while ShineLine and ShineLine.Parent do
@@ -68,8 +58,7 @@ task.spawn(function()
 	end
 end)
 
--- Botão de dupe
-local Button = Instance.new("TextButton")
+local Button = Instance.new("TextButton", Frame)
 Button.Position = UDim2.new(0.07, 0, 0.5, 0)
 Button.Size = UDim2.new(0.86, 0, 0.35, 0)
 Button.Text = "Dupe"
@@ -78,11 +67,36 @@ Button.TextSize = 24
 Button.TextColor3 = Color3.new(1, 1, 1)
 Button.BackgroundColor3 = Color3.fromRGB(100, 150, 255)
 Button.BorderSizePixel = 0
+
+local btnCorner = Instance.new("UICorner", Button)
+btnCorner.CornerRadius = UDim.new(0, 12)
+
 Button.Parent = Frame
 
-local btnCorner = Instance.new("UICorner")
-btnCorner.CornerRadius = UDim.new(0, 12)
-btnCorner.Parent = Button
+local function deepClone(original)
+	local clone = original:Clone()
+	
+	-- Clona os atributos
+	for _, attrName in ipairs(original:GetAttributes()) do
+		local val = original:GetAttribute(attrName)
+		clone:SetAttribute(attrName, val)
+	end
+
+	-- Clona filhos que são ValueObjects ou Scripts importantes
+	for _, child in ipairs(original:GetChildren()) do
+		if child:IsA("ValueBase") or child:IsA("ModuleScript") or child:IsA("Folder") then
+			child:Clone().Parent = clone
+		end
+	end
+
+	-- Clona as tags (caso o servidor use CollectionService)
+	local tags = CollectionService:GetTags(original)
+	for _, tag in ipairs(tags) do
+		CollectionService:AddTag(clone, tag)
+	end
+	
+	return clone
+end
 
 Button.MouseButton1Click:Connect(function()
 	local character = player.Character or player.CharacterAdded:Wait()
@@ -90,13 +104,7 @@ Button.MouseButton1Click:Connect(function()
 	local heldTool = character:FindFirstChildOfClass("Tool") or player.Backpack:FindFirstChildOfClass("Tool")
 
 	if heldTool and humanoid then
-		local clone = heldTool:Clone()
-		
-		-- Copia atributos do original
-		for _, attr in pairs(heldTool:GetAttributes()) do
-			clone:SetAttribute(_, attr)
-		end
-		
+		local clone = deepClone(heldTool)
 		clone.Parent = player.Backpack
 		task.wait(0.1)
 		humanoid:EquipTool(clone)
